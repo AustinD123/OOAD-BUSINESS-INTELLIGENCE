@@ -18,6 +18,16 @@ public class Dataset {
         this.description = description;
     }
 
+    /**
+     * Constructor that auto-sets timestamp to current time.
+     */
+    public Dataset(String id, Object data, String description) {
+        this.id = id;
+        this.data = data;
+        this.timestamp = LocalDateTime.now();
+        this.description = description;
+    }
+
     public String getId() {
         return id;
     }
@@ -48,5 +58,13 @@ public class Dataset {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    /**
+     * Returns a string representation: id | description.
+     */
+    @Override
+    public String toString() {
+        return id + " | " + description;
     }
 }

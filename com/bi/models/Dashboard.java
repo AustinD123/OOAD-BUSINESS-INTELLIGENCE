@@ -6,10 +6,10 @@ import java.util.List;
 public class Dashboard {
     private final int dashboardId;
     private final String userName;
-    private final List<Object> widgets;
+    private final List widgets;
     private final LocalDateTime lastUpdated;
 
-    public Dashboard(int dashboardId, String userName, List<Object> widgets, LocalDateTime lastUpdated) {
+    public Dashboard(int dashboardId, String userName, List widgets, LocalDateTime lastUpdated) {
         this.dashboardId = dashboardId;
         this.userName = userName;
         this.widgets = widgets;
@@ -24,7 +24,7 @@ public class Dashboard {
         return userName;
     }
 
-    public List<Object> getWidgets() {
+    public List getWidgets() {
         return widgets;
     }
 
