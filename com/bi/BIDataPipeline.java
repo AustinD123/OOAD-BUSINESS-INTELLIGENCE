@@ -118,6 +118,15 @@ public class BIDataPipeline {
     }
 
     /**
+     * Returns the repository instance used by this pipeline.
+     *
+     * @return the shared data repository instance
+     */
+    public DataRepositoryImpl getRepository() {
+        return dataRepository;
+    }
+
+    /**
      * Main entry point for the BIDataPipeline demonstration.
      * Connects all sources, runs the full pipeline, and demonstrates retrieval and indexing.
      */
