@@ -1,0 +1,25 @@
+{
+  "sql_source": "C:\\Users\\harsh\\Downloads\\database_ooad\\01-schema.sql",
+  "subsystem_count_in_registry": 16,
+  "requested_subsystem_count": 17,
+  "generated_file_count": 17,
+  "files": [
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\integration.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\financial_management.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\accounting.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\order_processing.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\project_management.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\ui.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\automation.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\data_analytics.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\business_process_controls.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\reporting.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\manufacturing.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\crm.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\sales_management.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\marketing.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\hr_management.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\supply_chain_and_purchasing.pdf",
+    "C:\\Users\\harsh\\Downloads\\database_ooad\\subsystem_docs\\business_intelligence.pdf"
+  ]
+}
