@@ -1,0 +1,9 @@
+Report Name,Report Type,Department,Date From,Date To,Generated
+"BI-Report-001","SALES","Sales","2025-06-02","2026-01-01","2026-04-21 11:00:39"
+
+Dataset ID,Record
+"TRANSFORMED-EXTRACTED-SALES-2026-04-21T11:00:02.656686","{processed=true, revenue=4500000.0, salesDate=2026-04-01T10:30, dealerId=DLR001, unitsSold=150, processedAt=2026-04-21T11:00:02.657768, carModel=Tesla Model 3}"
+"TRANSFORMED-EXTRACTED-SALES-2026-04-21T11:00:02.656686","{processed=true, revenue=3400000.0, salesDate=2026-04-02T14:15, dealerId=DLR002, unitsSold=85, processedAt=2026-04-21T11:00:02.657797, carModel=BMW X5}"
+"TRANSFORMED-EXTRACTED-SALES-2026-04-21T11:00:02.656686","{processed=true, revenue=2400000.0, salesDate=2026-04-03T09:45, dealerId=DLR003, unitsSold=120, processedAt=2026-04-21T11:00:02.657806, carModel=Audi A4}"
+"TRANSFORMED-EXTRACTED-SALES-2026-04-21T11:00:02.656686","{processed=true, revenue=3800000.0, salesDate=2026-04-04T11:20, dealerId=DLR004, unitsSold=95, processedAt=2026-04-21T11:00:02.657814, carModel=Mercedes C-Class}"
+"TRANSFORMED-EXTRACTED-SALES-2026-04-21T11:00:02.656686","{processed=true, revenue=3000000.0, salesDate=2026-04-05T15:00, dealerId=DLR005, unitsSold=200, processedAt=2026-04-21T11:00:02.657821, carModel=Toyota Camry}"

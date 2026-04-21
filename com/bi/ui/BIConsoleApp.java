@@ -228,6 +228,17 @@ public class BIConsoleApp {
                 + " department from " + fromDate + " to " + toDate;
         ReportConfig config = new ReportConfig(configDesc);
 
+        // Collect matching datasets for the report
+        List<Dataset> matchingDatasets = new ArrayList<>();
+        for (Dataset ds : pipeline.getRepository().index()) {
+            if (department.equals("All")
+                    || ds.getId().toLowerCase().contains(reportType.toLowerCase())
+                    || ds.getId().toLowerCase().contains(department.toLowerCase())) {
+                matchingDatasets.add(ds);
+            }
+        }
+        reportService.setReportContext(matchingDatasets, fromDate, toDate, department);
+
         try {
             reportService.generateReport(config);
 
@@ -266,8 +277,14 @@ public class BIConsoleApp {
             String exportChoice = prompt("  Select export");
 
             switch (exportChoice.trim()) {
-                case "1" -> { reportService.exportPDF();   print("  PDF export complete."); }
-                case "2" -> { reportService.exportExcel(); print("  Excel export complete."); }
+                case "1" -> {
+                    reportService.exportPDF();
+                    print("  PDF saved to: reports/ folder in your project directory.");
+                }
+                case "2" -> {
+                    reportService.exportExcel();
+                    print("  Excel (CSV) saved to: reports/ folder in your project directory.");
+                }
                 default  -> print("  Export skipped.");
             }
 

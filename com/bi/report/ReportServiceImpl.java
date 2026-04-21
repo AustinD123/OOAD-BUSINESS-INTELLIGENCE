@@ -5,9 +5,17 @@ import com.bi.enums.ReportFormat;
 import com.bi.exceptions.ReportGenerationException;
 import com.bi.interfaces.IReportService;
 import com.bi.models.Report;
+import com.bi.util.Dataset;
 import com.bi.util.ReportConfig;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,29 +24,37 @@ import java.util.Map;
 /**
  * ReportServiceImpl implements IReportService to generate, export, and persist reports.
  *
- * Database access is performed exclusively through the Integration team's ERP SDK
- * (via ERPClient) against the shared RDS instance — no direct JDBC.
+ * PDF export  → writes a formatted .txt file (named .pdf) to reports/
+ * Excel export → writes a CSV file (named .csv) to reports/
  *
- * Canonical table used: reports
- *   Writable columns: report_name, report_type, title, content, start_date, end_date
- *   (generated_date / format / generated_by are either server-defaulted or optional)
+ * Database access via ERPClient (Integration team ERP SDK) — no direct JDBC.
  */
 public class ReportServiceImpl implements IReportService {
+
+    private static final String REPORTS_DIR = "reports";
 
     private final List<Report> generatedReports = new ArrayList<>();
     private int reportCounter = 0;
     private Report lastReport = null;
-
-    // We track the RDS-generated primary key so we can update the same row on export.
     private long lastReportRdsId = -1;
 
+    // Extra context set by the UI before calling generateReport()
+    private List<Dataset> reportDatasets = new ArrayList<>();
+    private String reportFromDate = "";
+    private String reportToDate   = "";
+    private String reportDept     = "";
+
     /**
-     * Generates a report based on the provided configuration and persists it to the
-     * shared RDS via the ERP SDK.
-     *
-     * @param config the report configuration describing type and content
-     * @throws ReportGenerationException if config is null/blank or DB persistence fails
+     * Called by the UI to pass the datasets and date range before generateReport().
      */
+    public void setReportContext(List<Dataset> datasets, String fromDate,
+                                  String toDate, String dept) {
+        this.reportDatasets = datasets != null ? datasets : new ArrayList<>();
+        this.reportFromDate = fromDate != null ? fromDate : "";
+        this.reportToDate   = toDate   != null ? toDate   : "";
+        this.reportDept     = dept     != null ? dept     : "";
+    }
+
     @Override
     public void generateReport(ReportConfig config) {
         if (config == null) {
@@ -71,11 +87,6 @@ public class ReportServiceImpl implements IReportService {
         persistReport(report);
     }
 
-    /**
-     * Exports the last generated report as PDF.
-     *
-     * @throws ReportGenerationException if no report has been generated yet
-     */
     @Override
     public void exportPDF() {
         if (lastReport == null) {
@@ -84,15 +95,13 @@ public class ReportServiceImpl implements IReportService {
         }
         System.out.println("[ReportService] Exporting report '"
                 + lastReport.getReportName() + "' as PDF.");
+
+        String filePath = writeReportFile(lastReport, ReportFormat.PDF);
         updateReportFormat(lastReport, ReportFormat.PDF);
-        System.out.println("[ReportService] PDF export complete for: " + lastReport.getReportName());
+
+        System.out.println("[ReportService] PDF export complete → " + filePath);
     }
 
-    /**
-     * Exports the last generated report as Excel.
-     *
-     * @throws ReportGenerationException if no report has been generated yet
-     */
     @Override
     public void exportExcel() {
         if (lastReport == null) {
@@ -101,49 +110,140 @@ public class ReportServiceImpl implements IReportService {
         }
         System.out.println("[ReportService] Exporting report '"
                 + lastReport.getReportName() + "' as Excel.");
+
+        String filePath = writeReportFile(lastReport, ReportFormat.EXCEL);
         updateReportFormat(lastReport, ReportFormat.EXCEL);
-        System.out.println("[ReportService] Excel export complete for: " + lastReport.getReportName());
+
+        System.out.println("[ReportService] Excel export complete → " + filePath);
     }
 
-    /** Returns all generated reports so far. */
-    public List<Report> getGeneratedReports() {
-        return generatedReports;
-    }
+    public List<Report> getGeneratedReports() { return generatedReports; }
+    public Report getLastReport()              { return lastReport; }
 
-    /** Returns the most recently generated report, or null if none. */
-    public Report getLastReport() {
-        return lastReport;
-    }
-
-    // ─── private helpers ───────────────────────────────────────────────────────
-
-    private String resolveReportType(String description) {
-        String lower = description.toLowerCase();
-        if (lower.contains("sales"))                     return "SALES";
-        if (lower.contains("hr") || lower.contains("human")) return "HR";
-        if (lower.contains("finance") || lower.contains("financial")) return "FINANCE";
-        if (lower.contains("kpi"))                       return "KPI";
-        return "GENERAL";
-    }
+    // ─── file writing ─────────────────────────────────────────────────────────
 
     /**
-     * Persists a newly generated report to the shared RDS via the ERP SDK.
-     * Uses the canonical `reports` table.
+     * Writes the report to disk.
+     * PDF  → formatted text file at reports/<name>.pdf
+     * Excel → CSV file at reports/<name>.csv
      *
-     * Required writable columns: report_name, report_type, title, content
+     * @return the path of the written file
      */
+    private String writeReportFile(Report report, ReportFormat format) {
+        try {
+            Path dir = Paths.get(REPORTS_DIR);
+            Files.createDirectories(dir);
+
+            String ext      = format == ReportFormat.EXCEL ? ".csv" : ".pdf";
+            String fileName = report.getReportName()
+                    .replace(" ", "_")
+                    + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
+                    + ext;
+            Path filePath = dir.resolve(fileName);
+
+            if (format == ReportFormat.EXCEL) {
+                writeCsv(filePath, report);
+            } else {
+                writePdf(filePath, report);
+            }
+
+            return filePath.toAbsolutePath().toString();
+
+        } catch (IOException e) {
+            throw new ReportGenerationException(
+                    "Failed to write report file: " + e.getMessage(), e);
+        }
+    }
+
+    /** Writes a formatted text-based "PDF" report. */
+    private void writePdf(Path path, Report report) throws IOException {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(path.toFile()))) {
+            String sep = "=".repeat(60);
+            String dash = "-".repeat(60);
+
+            pw.println(sep);
+            pw.println("  BUSINESS INTELLIGENCE REPORT");
+            pw.println("  Team OREO — Sub-system #17");
+            pw.println(sep);
+            pw.println("  Report Name : " + report.getReportName());
+            pw.println("  Report Type : " + report.getReportType());
+            pw.println("  Department  : " + reportDept);
+            pw.println("  Date Range  : " + reportFromDate + " to " + reportToDate);
+            pw.println("  Generated   : " + report.getGeneratedDate()
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            pw.println(sep);
+            pw.println();
+
+            if (reportDatasets.isEmpty()) {
+                pw.println("  [No data available for this report]");
+            } else {
+                for (Dataset ds : reportDatasets) {
+                    pw.println("  Dataset : " + ds.getId());
+                    pw.println("  " + dash);
+                    if (ds.getData() instanceof List<?> rows) {
+                        for (Object row : rows) {
+                            pw.println("    " + row.toString());
+                        }
+                    } else {
+                        pw.println("    " + ds.getData());
+                    }
+                    pw.println();
+                }
+            }
+
+            pw.println(sep);
+            pw.println("  END OF REPORT");
+            pw.println(sep);
+        }
+    }
+
+    /** Writes a CSV-based Excel report. */
+    private void writeCsv(Path path, Report report) throws IOException {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(path.toFile()))) {
+            pw.println("Report Name,Report Type,Department,Date From,Date To,Generated");
+            pw.println(csv(report.getReportName()) + "," + csv(report.getReportType()) + ","
+                    + csv(reportDept) + "," + csv(reportFromDate) + "," + csv(reportToDate) + ","
+                    + csv(report.getGeneratedDate()
+                            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))));
+            pw.println();
+
+            if (reportDatasets.isEmpty()) {
+                pw.println("No data available");
+            } else {
+                pw.println("Dataset ID,Record");
+                for (Dataset ds : reportDatasets) {
+                    if (ds.getData() instanceof List<?> rows) {
+                        for (Object row : rows) {
+                            pw.println(csv(ds.getId()) + "," + csv(row.toString()));
+                        }
+                    } else {
+                        pw.println(csv(ds.getId()) + "," + csv(String.valueOf(ds.getData())));
+                    }
+                }
+            }
+        }
+    }
+
+    private String csv(String s) {
+        if (s == null) return "";
+        return "\"" + s.replace("\"", "\"\"") + "\"";
+    }
+
+    // ─── RDS helpers ──────────────────────────────────────────────────────────
+
     private void persistReport(Report report) {
         try {
             Map<String, Object> payload = new HashMap<>();
-            payload.put("report_name",  report.getReportName());
-            payload.put("report_type",  report.getReportType());
-            payload.put("title",        report.getReportName());  // title maps to report_name
-            payload.put("content",      String.valueOf(report.getReportData()));
+            payload.put("report_name", report.getReportName());
+            payload.put("report_type", report.getReportType());
+            payload.put("title",       report.getReportName());
+            payload.put("content",     String.valueOf(report.getReportData()));
+            if (!reportFromDate.isBlank()) payload.put("start_date", reportFromDate);
+            if (!reportToDate.isBlank())   payload.put("end_date",   reportToDate);
 
             lastReportRdsId = ERPClient.create("reports", payload);
-
-            System.out.println("[ReportService] Report persisted to RDS (id=" + lastReportRdsId
-                    + "): " + report.getReportName());
+            System.out.println("[ReportService] Report persisted to RDS (id="
+                    + lastReportRdsId + "): " + report.getReportName());
 
         } catch (Exception e) {
             throw new ReportGenerationException(
@@ -151,31 +251,31 @@ public class ReportServiceImpl implements IReportService {
         }
     }
 
-    /**
-     * Updates the content/title of the persisted report to reflect the chosen export format.
-     * Since the canonical schema does not have a mutable format_code column accessible to BI,
-     * we update the `content` field with a note about the chosen export format.
-     */
     private void updateReportFormat(Report report, ReportFormat format) {
         if (lastReportRdsId < 0) {
-            // Report was never persisted (e.g. DB was unavailable) — log and continue.
-            System.err.println("[ReportService] Warning: no RDS id for last report; skipping format update.");
+            System.err.println("[ReportService] Warning: no RDS id; skipping format update.");
             return;
         }
         try {
             Map<String, Object> payload = new HashMap<>();
             payload.put("content", String.valueOf(report.getReportData())
                     + " [Exported as " + format.name() + "]");
-
             ERPClient.update("reports", "report_id", lastReportRdsId, payload);
-
             System.out.println("[ReportService] Report format updated in RDS to "
                     + format.name() + " for: " + report.getReportName());
-
         } catch (Exception e) {
-            // Non-fatal — export still happened in-process.
-            System.err.println("[ReportService] Warning: could not update report format in RDS: "
-                    + e.getMessage());
+            System.err.println("[ReportService] Warning: could not update RDS: " + e.getMessage());
         }
+    }
+
+    // ─── helpers ──────────────────────────────────────────────────────────────
+
+    private String resolveReportType(String description) {
+        String lower = description.toLowerCase();
+        if (lower.contains("sales"))                          return "SALES";
+        if (lower.contains("hr") || lower.contains("human")) return "HR";
+        if (lower.contains("finance") || lower.contains("financial")) return "FINANCE";
+        if (lower.contains("kpi"))                            return "KPI";
+        return "GENERAL";
     }
 }
