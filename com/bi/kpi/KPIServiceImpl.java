@@ -160,8 +160,9 @@ public class KPIServiceImpl implements IKPIService {
                     + "): " + kpi.getKpiName());
 
         } catch (Exception e) {
-            throw new KPIEvaluationException(
-                    "Failed to persist KPI '" + kpi.getKpiName() + "' to RDS: " + e.getMessage(), e);
+            // Non-fatal — KPI is still evaluated and shown in the UI
+            System.err.println("[KPIService] Warning: could not persist KPI '"
+                    + kpi.getKpiName() + "' to RDS: " + e.getMessage());
         }
     }
 }
